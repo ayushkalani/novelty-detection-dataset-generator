@@ -24,8 +24,6 @@ WHITELISTED_ACTIONS = ["free_mortgage", "make_sell_property_offer", "sell_proper
                        "accept_trade_offer", "pre_roll_arbitrary_action", "out_of_turn_arbitrary_action",
                        "post_roll_arbitrary_action", "accept_arbitrary_interaction"]
 
-
-# json_msg_1_5228.json
 def process_history(history, current_timestep):
     for step in history:
         if step["time_step"] == current_timestep and step["function"] in WHITELISTED_ACTIONS:
@@ -37,7 +35,7 @@ def get_current_time_step(filename):
     if current_timestep and current_timestep[0]:
         return current_timestep[0]
     else:
-        raise ValueError('Not able to detect timestep of the json, check the regex')
+        raise ValueError('Not able to detect timestep of the json, check the regex') # json_msg_1_5228.json
     
 
 def read_game_json():
