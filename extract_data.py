@@ -1,4 +1,3 @@
-from asyncore import file_wrapper
 import json
 import os
 import logging
@@ -44,6 +43,11 @@ for i in range(1, NUMBER_OF_PLAYERS + 1):
     for boolean_column in BOOLEAN_COLUMNS:
         PLAYER_BOOLEAN_COLUMNS.add("players"+"."+"player_" + str(i)+"." + boolean_column)
         
+def natural_sort(l): 
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return sorted(l, key=alphanum_key)
+        
 def process_history(data, current_timestep):
     for step in data["history"]:
         try:
@@ -83,6 +87,7 @@ def read_game_json():
     json_files = [pos_json for pos_json in os.listdir(
         PATH_TO_JSON) if pos_json.startswith(file_prefix) and pos_json.endswith('.json')]
     df_list = []
+    json_files = natural_sort(json_files)
     for file in json_files:
         of = open(PATH_TO_JSON + file, "r", encoding='utf-8')
         logging.debug("reading file %s", file)
