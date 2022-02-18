@@ -4,6 +4,7 @@ import os
 import logging
 import re
 import pandas as pd
+import copy
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -36,7 +37,7 @@ LOCATION_VECTOR = {}
 for i in range(1, 5):
     for location in LOCATIONS:
         LOCATION_VECTOR["player_" + str(i)+"." + "location" + "."+location] = 0
-
+            
 def process_history(data, current_timestep):
     for step in data["history"]:
         if step["time_step"] == current_timestep and step["function"] in WHITELISTED_ACTIONS.keys() and step["param"]:
@@ -44,8 +45,14 @@ def process_history(data, current_timestep):
             player_name = step["param"]["self"] if "self" in step["param"].keys() else step["param"]["player"]
             data[player_name+"."+step["function"]]=1            
 
-            
-            
+def encode_player_assets(data):
+    location = copy.deepcopy(LOCATION_VECTOR)
+    for player in data["players"]:
+        for asset in data["players"][player]["assets"]:
+            p_asset = player + '.location.' + asset
+            if p_asset in location: location[p_asset] = 1 
+    return location
+    
 def get_current_time_step(filename):
     current_timestep = re.findall("_(\d*)\.json$", filename)
     if current_timestep and current_timestep[0]:
@@ -75,9 +82,12 @@ def read_game_json():
         for i in range(1,5):
             data["player_"+str(i)+"."+actions] = 0 
     process_history(data, get_current_time_step(file))
+    player_encoded_assets = encode_player_assets(data)
+    data.update(player_encoded_assets)
     del data["history"]
     df_list.append(data)
     of.close()
+    break
   write_csv(df_list)
 
 def write_csv(write):
