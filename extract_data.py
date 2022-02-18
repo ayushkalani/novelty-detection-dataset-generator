@@ -1,6 +1,6 @@
 from asyncore import file_wrapper
 import json
-import os, sys
+import os
 import logging
 import re
 import pandas as pd
@@ -13,10 +13,8 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PATH_TO_JSON = 'json/'
 PLAYER_TO_IGNORE = "player_1"
-
 PLAYER_KEYS_TO_IGNORE = ["full_color_sets_possessed"]
 # WHITELISTED_ACTIONS = ["free_mortgage", "make_sell_property_offer", "sell_property", "sell_house_hotel", "accept_sell_property_offer",
 #                        "skip_turn", "concluded_actions", "mortgage_property", "improve_property", "use_get_out_of_jail_card",
@@ -29,6 +27,15 @@ WHITELISTED_ACTIONS = {"free_mortgage":0, "make_sell_property_offer":1, "sell_pr
                        "pay_jail_fine":10, "roll_die":11, "buy_property":12, "make_trade_offer":13,
                        "accept_trade_offer":14, "pre_roll_arbitrary_action":15, "out_of_turn_arbitrary_action":16,
                        "post_roll_arbitrary_action":17, "accept_arbitrary_interaction":18}
+
+# number of locations on board - 36
+LOCATIONS = {'Illinois Avenue', 'Go to Jail', 'Luxury Tax', 'Go', 'B&O Railroad', 'Atlantic Avenue', 'Boardwalk', 'Marvin Gardens', 'Pacific Avenue', 'Water Works', 'Mediterranean Avenue', 'Community Chest', 'Tennessee Avenue', 'Baltic Avenue', 'North Carolina Avenue', 'Income Tax', 'Reading Railroad', 'Oriental Avenue', 'Chance', 'Indiana Avenue', 'Short Line', 'Vermont Avenue', 'Ventnor Avenue', 'Connecticut Avenue', 'In Jail/Just Visiting', 'St. Charles Place', 'Park Place', 'Electric Company', 'States Avenue', 'Virginia Avenue', 'Pennsylvania Railroad', 'St. James Place', 'Pennsylvania Avenue', 'New York Avenue', 'Free Parking', 'Kentucky Avenue'}
+
+LOCATION_VECTOR = {}
+
+for i in range(1, 5):
+    for location in LOCATIONS:
+        LOCATION_VECTOR["player_" + str(i)+"." + "location" + "."+location] = 0
 
 def process_history(data, current_timestep):
     for step in data["history"]:
@@ -71,7 +78,6 @@ def read_game_json():
     del data["history"]
     df_list.append(data)
     of.close()
-    write_csv(df_list)
   write_csv(df_list)
 
 def write_csv(write):
@@ -80,6 +86,3 @@ def write_csv(write):
 
 if __name__ == "__main__":
    read_game_json()
-
-
-# def OneHotEncoding(dictionary, )
