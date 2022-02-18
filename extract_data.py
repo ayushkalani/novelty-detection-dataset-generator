@@ -68,7 +68,7 @@ def process_history(data, current_timestep):
             pass
         except ValueError:
             logging.error("ValueError while process_history %s", current_timestep)
-            passgit 
+            pass
 
 def encode_player_assets(data):
     location = copy.deepcopy(LOCATION_VECTOR)
