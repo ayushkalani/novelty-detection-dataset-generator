@@ -16,7 +16,8 @@ logging.basicConfig(
 )
 PATH_TO_JSON = 'json/'
 PLAYER_TO_IGNORE = "player_1"
-PLAYER_KEYS_TO_IGNORE = ["full_color_sets_possessed"]
+PLAYER_KEYS_TO_IGNORE = ["full_color_sets_possessed", "assets"]
+NUMBER_OF_PLAYERS = 4
 # WHITELISTED_ACTIONS = ["free_mortgage", "make_sell_property_offer", "sell_property", "sell_house_hotel", "accept_sell_property_offer",
 #                        "skip_turn", "concluded_actions", "mortgage_property", "improve_property", "use_get_out_of_jail_card",
 #                        "pay_jail_fine", "roll_die", "buy_property", "make_trade_offer",
@@ -32,12 +33,17 @@ WHITELISTED_ACTIONS = {"free_mortgage":0, "make_sell_property_offer":1, "sell_pr
 # number of locations on board - 36
 LOCATIONS = {'Illinois Avenue', 'Go to Jail', 'Luxury Tax', 'Go', 'B&O Railroad', 'Atlantic Avenue', 'Boardwalk', 'Marvin Gardens', 'Pacific Avenue', 'Water Works', 'Mediterranean Avenue', 'Community Chest', 'Tennessee Avenue', 'Baltic Avenue', 'North Carolina Avenue', 'Income Tax', 'Reading Railroad', 'Oriental Avenue', 'Chance', 'Indiana Avenue', 'Short Line', 'Vermont Avenue', 'Ventnor Avenue', 'Connecticut Avenue', 'In Jail/Just Visiting', 'St. Charles Place', 'Park Place', 'Electric Company', 'States Avenue', 'Virginia Avenue', 'Pennsylvania Railroad', 'St. James Place', 'Pennsylvania Avenue', 'New York Avenue', 'Free Parking', 'Kentucky Avenue'}
 
-LOCATION_VECTOR = {}
+BOOLEAN_COLUMNS = {"has_get_out_of_jail_chance_card", "has_get_out_of_jail_community_chest_card", "currently_in_jail", "option_to_buy", "is_property_offer_outstanding", "is_trade_offer_outstanding"}
 
-for i in range(1, 5):
+LOCATION_VECTOR = {}
+PLAYER_BOOLEAN_COLUMNS = set()
+
+for i in range(1, NUMBER_OF_PLAYERS + 1):
     for location in LOCATIONS:
         LOCATION_VECTOR["player_" + str(i)+"." + "location" + "."+location] = 0
-            
+    for boolean_column in BOOLEAN_COLUMNS:
+        PLAYER_BOOLEAN_COLUMNS.add("players"+"."+"player_" + str(i)+"." + boolean_column)
+        
 def process_history(data, current_timestep):
     for step in data["history"]:
         try:
@@ -72,38 +78,50 @@ def get_current_time_step(filename):
     else:
         raise ValueError('Not able to detect timestep of the json, check the regex') # json_msg_1_5228.json
     
-
 def read_game_json():
-  file_prefix = "json_msg_"
-  json_files = [pos_json for pos_json in os.listdir(
-      PATH_TO_JSON) if pos_json.startswith(file_prefix) and pos_json.endswith('.json')]
-  df_list = []
-  for file in json_files:
-    of = open(PATH_TO_JSON + file, "r", encoding='utf-8')
-    logging.debug("reading file %s", file)
-    data = json.load(of)
-    #main_player_function = data["actions_and_params"]["function"]
-    data = data["true_next_state"]
-    # clean
-    del data["location_sequence"]
-    del data["locations"]
-    del data["cards"]
-    del data["die_sequence"]
-    # history
-    for actions in WHITELISTED_ACTIONS.keys():
-        for i in range(1,5):
-            data["player_"+str(i)+"."+actions] = 0 
-    process_history(data, get_current_time_step(file))
-    player_encoded_assets = encode_player_assets(data)
-    data.update(player_encoded_assets)
-    del data["history"]
-    df_list.append(data)
-    of.close()
-  write_csv(df_list)
+    file_prefix = "json_msg_"
+    json_files = [pos_json for pos_json in os.listdir(
+        PATH_TO_JSON) if pos_json.startswith(file_prefix) and pos_json.endswith('.json')]
+    df_list = []
+    for file in json_files:
+        of = open(PATH_TO_JSON + file, "r", encoding='utf-8')
+        logging.debug("reading file %s", file)
+        data = json.load(of)
+        #main_player_function = data["actions_and_params"]["function"]
+        data = data["true_next_state"]
+        # history
+        for actions in WHITELISTED_ACTIONS.keys():
+            for i in range(1, NUMBER_OF_PLAYERS + 1):
+                data["player_"+str(i)+"."+actions] = 0 
+        process_history(data, get_current_time_step(file))
+        player_encoded_assets = encode_player_assets(data)
+        data.update(player_encoded_assets)
+        # clean
+        for i in range(1, NUMBER_OF_PLAYERS + 1):
+            for key_to_delete in PLAYER_KEYS_TO_IGNORE:
+                if data["players"]["player_"+str(i)].get(key_to_delete, None):
+                    del data["players"]["player_"+str(i)][key_to_delete]
+        del data["location_sequence"]
+        del data["locations"]
+        del data["cards"]
+        del data["die_sequence"]
+        del data["history"]
+        df_list.append(data)
+        of.close()
+    write_csv(df_list)
 
 def write_csv(write):
     df = pd.json_normalize(write)
-    df.to_csv('test_alone.csv', index=False, encoding='utf-8')
+    for col in PLAYER_BOOLEAN_COLUMNS:
+        if col in df.columns:
+            df[col] = df[col].astype(int)
+    df.to_csv('test_1.csv', index=False, encoding='utf-8')
 
 if __name__ == "__main__":
-   read_game_json()
+    try:
+        read_game_json()
+    except OSError as err:
+        print("OS error: {0}".format(err))
+    except ValueError:
+        logging.error("ValueError in main")
+        pass    
