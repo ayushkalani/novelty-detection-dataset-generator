@@ -4,7 +4,6 @@ import logging
 import re
 import pandas as pd
 import copy
-
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -42,11 +41,14 @@ for i in range(1, NUMBER_OF_PLAYERS + 1):
         LOCATION_VECTOR["player_" + str(i)+"." + "location" + "."+location] = 0
     for boolean_column in BOOLEAN_COLUMNS:
         PLAYER_BOOLEAN_COLUMNS.add("players"+"."+"player_" + str(i)+"." + boolean_column)
-        
+
+############## UTIL FUNCTIONS ################
 def natural_sort(l): 
     convert = lambda text: int(text) if text.isdigit() else text.lower()
     alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
     return sorted(l, key=alphanum_key)
+
+#############################################
         
 def process_history(data, current_timestep):
     for step in data["history"]:
@@ -54,14 +56,19 @@ def process_history(data, current_timestep):
             if step["time_step"] == current_timestep and step["function"] in WHITELISTED_ACTIONS.keys() and step["param"]:
                 # check player first, and then self, because self can be a location too
                 player_name = ""
-                if  step["param"]["player"]:
+                if  step["param"].get("player", None):
                     player_name = step["param"]["player"]
-                else:
+                elif  step["param"].get("self", None):
                     player_name = step["param"]["self"]
+                if not player_name:
+                    raise ValueError('Unable to extract Player Name')
                 data[player_name+"."+step["function"]]=1
         except KeyError:
-            logging.error("Keyerror while process_history", current_timestep)
-            pass         
+            logging.error("Keyerror while process_history %s", current_timestep)
+            pass
+        except ValueError:
+            logging.error("ValueError while process_history %s", current_timestep)
+            pass
 
 def encode_player_assets(data):
     location = copy.deepcopy(LOCATION_VECTOR)
