@@ -40,17 +40,29 @@ for i in range(1, 5):
             
 def process_history(data, current_timestep):
     for step in data["history"]:
-        if step["time_step"] == current_timestep and step["function"] in WHITELISTED_ACTIONS.keys() and step["param"]:
-            # if step["param"] and step
-            player_name = step["param"]["self"] if "self" in step["param"].keys() else step["param"]["player"]
-            data[player_name+"."+step["function"]]=1            
+        try:
+            if step["time_step"] == current_timestep and step["function"] in WHITELISTED_ACTIONS.keys() and step["param"]:
+                # check player first, and then self, because self can be a location too
+                player_name = ""
+                if  step["param"]["player"]:
+                    player_name = step["param"]["player"]
+                else:
+                    player_name = step["param"]["self"]
+                data[player_name+"."+step["function"]]=1
+        except KeyError:
+            logging.error("Keyerror while process_history", current_timestep)
+            pass         
 
 def encode_player_assets(data):
     location = copy.deepcopy(LOCATION_VECTOR)
-    for player in data["players"]:
-        for asset in data["players"][player]["assets"]:
-            p_asset = player + '.location.' + asset
-            if p_asset in location: location[p_asset] = 1 
+    try:
+        for player in data["players"]:
+            for asset in data["players"][player]["assets"]:
+                p_asset = player + '.location.' + asset
+                if p_asset in location: location[p_asset] = 1
+    except KeyError:
+            logging.error("Keyerror while encode_player_assets")
+            pass            
     return location
     
 def get_current_time_step(filename):
@@ -87,12 +99,11 @@ def read_game_json():
     del data["history"]
     df_list.append(data)
     of.close()
-    break
   write_csv(df_list)
 
 def write_csv(write):
     df = pd.json_normalize(write)
-    df.to_csv('test.csv', index=False, encoding='utf-8')
+    df.to_csv('test_alone.csv', index=False, encoding='utf-8')
 
 if __name__ == "__main__":
    read_game_json()
