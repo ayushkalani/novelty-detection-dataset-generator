@@ -4,6 +4,7 @@ import logging
 import re
 import pandas as pd
 import copy
+from Novelty_utils import novelty_mapping
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -52,8 +53,11 @@ def natural_sort(l):
         
 def process_history(data, current_timestep):
     for step in data["history"]:
+        function_name = step["function"]
+        if function_name in novelty_mapping.keys():
+            function_name = novelty_mapping[function_name]
         try:
-            if step["time_step"] == current_timestep and step["function"] in WHITELISTED_ACTIONS.keys() and step["param"]:
+            if step["time_step"] == current_timestep and function_name in WHITELISTED_ACTIONS.keys() and step["param"]:
                 # check player first, and then self, because self can be a location too
                 player_name = ""
                 if  step["param"].get("player", None):
