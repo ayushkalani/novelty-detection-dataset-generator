@@ -28,20 +28,23 @@ WHITELISTED_ACTIONS = {"free_mortgage":0, "make_sell_property_offer":1, "sell_pr
                        "pay_jail_fine":10, "roll_die":11, "buy_property":12, "make_trade_offer":13,
                        "accept_trade_offer":14, "pre_roll_arbitrary_action":15, "out_of_turn_arbitrary_action":16,
                        "post_roll_arbitrary_action":17, "accept_arbitrary_interaction":18}
-
+PLAYER_STATUS_MAPPING = {"waiting_for_move": 0, 'current_move:':1, 'won': 2, 'lost':3}
 # number of locations on board - 36
 LOCATIONS = {'Illinois Avenue', 'Go to Jail', 'Luxury Tax', 'Go', 'B&O Railroad', 'Atlantic Avenue', 'Boardwalk', 'Marvin Gardens', 'Pacific Avenue', 'Water Works', 'Mediterranean Avenue', 'Community Chest', 'Tennessee Avenue', 'Baltic Avenue', 'North Carolina Avenue', 'Income Tax', 'Reading Railroad', 'Oriental Avenue', 'Chance', 'Indiana Avenue', 'Short Line', 'Vermont Avenue', 'Ventnor Avenue', 'Connecticut Avenue', 'In Jail/Just Visiting', 'St. Charles Place', 'Park Place', 'Electric Company', 'States Avenue', 'Virginia Avenue', 'Pennsylvania Railroad', 'St. James Place', 'Pennsylvania Avenue', 'New York Avenue', 'Free Parking', 'Kentucky Avenue'}
 
 BOOLEAN_COLUMNS = {"has_get_out_of_jail_chance_card", "has_get_out_of_jail_community_chest_card", "currently_in_jail", "option_to_buy", "is_property_offer_outstanding", "is_trade_offer_outstanding"}
 
 LOCATION_VECTOR = {}
+PLAYER_NAME_MAPPING = {}
 PLAYER_BOOLEAN_COLUMNS = set()
 
 for i in range(1, NUMBER_OF_PLAYERS + 1):
+    name = "player_" + str(i)
     for location in LOCATIONS:
-        LOCATION_VECTOR["player_" + str(i)+"." + "location" + "."+location] = 0
+        LOCATION_VECTOR[name+"." + "location" + "."+location] = 0
     for boolean_column in BOOLEAN_COLUMNS:
-        PLAYER_BOOLEAN_COLUMNS.add("players"+"."+"player_" + str(i)+"." + boolean_column)
+        PLAYER_BOOLEAN_COLUMNS.add("players"+"."+name+"." + boolean_column)
+    PLAYER_NAME_MAPPING[name] = i
 
 ############## UTIL FUNCTIONS ################
 def natural_sort(l): 
@@ -100,30 +103,29 @@ def read_game_json():
     df_list = []
     json_files = natural_sort(json_files)
     for file in json_files:
-        of = open(PATH_TO_JSON + file, "r", encoding='utf-8')
-        logging.debug("reading file %s", file)
-        data = json.load(of)
-        #main_player_function = data["actions_and_params"]["function"]
-        data = data["true_next_state"]
-        # history
-        for actions in WHITELISTED_ACTIONS.keys():
+        with open(PATH_TO_JSON + file, "r", encoding='utf-8') as of: 
+            logging.debug("reading file %s", file)
+            data = json.load(of)
+            #main_player_function = data["actions_and_params"]["function"]
+            data = data["true_next_state"]
+            # history
+            for actions in WHITELISTED_ACTIONS.keys():
+                for i in range(1, NUMBER_OF_PLAYERS + 1):
+                    data["player_"+str(i)+"."+actions] = 0 
+            process_history(data, get_current_time_step(file))
+            player_encoded_assets = encode_player_assets(data)
+            data.update(player_encoded_assets)
+            # clean
             for i in range(1, NUMBER_OF_PLAYERS + 1):
-                data["player_"+str(i)+"."+actions] = 0 
-        process_history(data, get_current_time_step(file))
-        player_encoded_assets = encode_player_assets(data)
-        data.update(player_encoded_assets)
-        # clean
-        for i in range(1, NUMBER_OF_PLAYERS + 1):
-            for key_to_delete in PLAYER_KEYS_TO_IGNORE:
-                data["players"]["player_"+str(i)].pop(key_to_delete, None)
-        data.pop("location_sequence", None)
-        data.pop("cards", None)
-        data.pop("die_sequence", None)
-        data.pop("history", None)
-        data.pop("locations", None)
-        df_list.append(data)
-        of.close()
-        break
+                for key_to_delete in PLAYER_KEYS_TO_IGNORE:
+                    data["players"]["player_"+str(i)].pop(key_to_delete, None)
+            data.pop("location_sequence", None)
+            data.pop("cards", None)
+            data.pop("die_sequence", None)
+            data.pop("history", None)
+            data.pop("locations", None)
+            df_list.append(data)
+            break
     write_csv(df_list)
 
 def write_csv(write):
